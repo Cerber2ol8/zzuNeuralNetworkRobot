@@ -1,0 +1,27 @@
+Date: 04/29/19
+Time: 11:38:40
+Total frames: 10696
+Saved frames: 155
+Dropped frames: 10541
+Forward clicks: 71
+Forward-left clicks: 39
+Forward-right clicks: 45
+-----------------------------
+Date: 04/29/19
+Time: 11:47:37
+Total frames: 9154
+Saved frames: 158
+Dropped frames: 8996
+Forward clicks: 71
+Forward-left clicks: 35
+Forward-right clicks: 52
+-----------------------------
+Date: 04/29/19
+Time: 20:10:46
+Total frames: 2660
+Saved frames: 0
+Dropped frames: 2660
+Forward clicks: 0
+Forward-left clicks: 0
+Forward-right clicks: 0
+-----------------------------

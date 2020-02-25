@@ -1,0 +1,99 @@
+Date: 04/29/19
+Time: 11:38:40
+Total frames: 10696
+Saved frames: 155
+Dropped frames: 10541
+Forward clicks: 71
+Forward-left clicks: 39
+Forward-right clicks: 45
+-----------------------------
+Date: 04/29/19
+Time: 11:47:37
+Total frames: 9154
+Saved frames: 158
+Dropped frames: 8996
+Forward clicks: 71
+Forward-left clicks: 35
+Forward-right clicks: 52
+-----------------------------
+Date: 04/29/19
+Time: 20:10:46
+Total frames: 2660
+Saved frames: 0
+Dropped frames: 2660
+Forward clicks: 0
+Forward-left clicks: 0
+Forward-right clicks: 0
+-----------------------------
+Date: 07/29/19
+Time: 23:54:58
+Total frames: 39
+Saved frames: 0
+Dropped frames: 39
+Forward clicks: 0
+Forward-left clicks: 0
+Forward-right clicks: 0
+-----------------------------
+Date: 07/30/19
+Time: 00:00:41
+Total frames: 59
+Saved frames: 27
+Dropped frames: 32
+Forward clicks: 14
+Forward-left clicks: 6
+Forward-right clicks: 7
+-----------------------------
+Date: 07/30/19
+Time: 00:08:24
+Total frames: 139
+Saved frames: 2
+Dropped frames: 137
+Forward clicks: 2
+Forward-left clicks: 0
+Forward-right clicks: 0
+-----------------------------
+Date: 07/30/19
+Time: 00:18:45
+Total frames: 44
+Saved frames: 0
+Dropped frames: 44
+Forward clicks: 0
+Forward-left clicks: 0
+Forward-right clicks: 0
+-----------------------------
+Date: 07/30/19
+Time: 00:19:18
+Total frames: 198
+Saved frames: 0
+Dropped frames: 198
+Forward clicks: 0
+Forward-left clicks: 0
+Forward-right clicks: 0
+-----------------------------
+Date: 07/30/19
+Time: 00:25:00
+Total frames: 187
+Saved frames: 0
+Dropped frames: 187
+Forward clicks: 0
+Forward-left clicks: 0
+Forward-right clicks: 0
+-----------------------------
+Date: 07/30/19
+Time: 00:28:56
+Total frames: 117
+Saved frames: 0
+Dropped frames: 117
+Forward clicks: 0
+Forward-left clicks: 0
+Forward-right clicks: 0
+-----------------------------
+Date: 07/30/19
+Time: 12:44:32
+Total frames: 50
+Saved frames: 0
+Dropped frames: 50
+Forward clicks: 0
+Forward-left clicks: 0
+Forward-right clicks: 0
+-----------------------------
