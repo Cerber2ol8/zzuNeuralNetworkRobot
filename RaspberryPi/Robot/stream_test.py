@@ -6,9 +6,7 @@ import time
 import os
 import threading
 from config  import *
-SIGMA = 0.33
 
-map1, map2 = cv2.fisheye.initUndistortRectifyMap(K, D, np.eye(3), K, DIM,  cv2.CV_16SC2)
 
 class VideoStreaming(threading.Thread):
     def __init__(self,threadID, name,input_size):
@@ -43,8 +41,6 @@ class VideoStreaming(threading.Thread):
         self.file_name = ''
         self.jpg = b' '
         self.image = None
-        
-        
         #X = np.empty((0, self.input_size))     数据集先储存为图片，训练时再转换成np.arrary
         self.y = np.empty((0, 4))
         for i in range(3):
@@ -57,16 +53,6 @@ class VideoStreaming(threading.Thread):
     def stop(self):  
             self.thread_stop = True  
             print("线程"+self.name+"结束")
-    def auto_canny(self, blurred):
-        # Compute the median of the single channel pixel intensities
-        global SIGMA
-        v = np.median(blurred)
-
-        # Apply automatic Canny edge detection using the computed median of the image
-        lower = int(max(0,   (1.0 - SIGMA) * v))
-        upper = int(min(255, (1.0 + SIGMA) * v))
-        edged = cv2.Canny(blurred, lower, upper)
-        return edged
 
     def streaming(self):
 
@@ -77,6 +63,7 @@ class VideoStreaming(threading.Thread):
         print("Press 'q' or 'x' to finish...")
         start = cv2.getTickCount()
 
+        
 
         # stream video frames one by one
         try:
@@ -93,7 +80,7 @@ class VideoStreaming(threading.Thread):
                     self.jpg = self.stream_bytes[first:last + 2]
                     self.stream_bytes = self.stream_bytes[last + 2:]
                     self.image = cv2.imdecode(np.frombuffer(self.jpg, dtype=np.uint8), cv2.IMREAD_GRAYSCALE)
-                    #self.image = cv2.remap(self.image,map1,map2, interpolation= cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+                    
                     self.clicks_total = self.clicks_forward + self.clicks_left + self.clicks_right
                     cv2.putText(self.image, "FW: {}, LT: {}, RT: {}, TOTAL: {}".format(self.clicks_forward, 
                                                                                   self.clicks_left, 
@@ -102,16 +89,8 @@ class VideoStreaming(threading.Thread):
                     # select lower half of the image
                     #height, width = image.shape            不在collect里处理图片了，训练之前预处理再说
                     #roi = image[int(height/2):height, :]
-                    #cv2.imshow('image', self.image)
-                    img_roi = self.image[roi[0]:roi[1], :]
-                    blurred = cv2.GaussianBlur(img_roi, (3, 3), 0)
-                    # Apply Canny filter
-                    auto = self.auto_canny(blurred)     
-                    cv2.namedWindow('img', cv2.WINDOW_NORMAL)
-                    #cv2.resizeWindow('img',(roi[1]-roi[0])*800/320, 800)
-                    cv2.imshow('img',np.vstack([self.image,auto]))
+                    cv2.imshow('image', self.image)
 
- 
                     
                     if self.frame % 300 ==0:
                         self.currunt_time = time.time()
@@ -184,10 +163,6 @@ class VideoStreaming(threading.Thread):
         if key == KEY_LEFT:
             #print('left')
             #X = np.vstack((X, img_array))      
-            cv2.putText(self.image, "FW: {}, LT: {}, RT: {}, TOTAL: {}".format(self.clicks_forward, 
-                                                                            self.clicks_left, 
-                                                                            self.clicks_right, self.clicks_total
-                                                                            ), (10, 30), cv2.FONT_HERSHEY_SIMPLEX, .45, (255, 255, 0), 1)
             cv2.imwrite('./training_images/frame{:>05}.jpg'.format(self.frame), self.image)
             self.y = np.vstack((self.y, self.k[0]))       # self.k[0] = [ 1.,  0.,  0.， frame]
             self.clicks_left += 1                              

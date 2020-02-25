@@ -1,5 +1,5 @@
 __author__ = 'LiuChongyang'
-#The python interpreter on Raspian Does support Chinese
+#The python2 interpreter on Raspian NOT support Chinese
 #The annotation must be English
 #Errors will happend if Chinese characters appear
 
@@ -47,9 +47,10 @@ SERVO_LED_ERROR_WRITE=        35
 SERVO_LED_ERROR_READ=         36
 #*********  Network Config    *********#
 
-RasPi = '192.168.43.219' 
+RasPi = '192.168.43.219'
+#RasPi = '169.254.42.40'
 PC = '192.168.43.156'
-
+#PC = '192.168.43.42'
 
 localhost = '127.0.0.1'
 streaming_port = 8000
@@ -58,15 +59,8 @@ key_port = 9870
 
 #*********  Serial Config   *********#
 
-#serial_mac = "/dev/tty.usbmodem1421"  # mac
-
 SerialID = "/dev/ttyAMA0"	  # linux
 Baudrate = 9600
-
-#*********  Robot Serial command Config *********#
-#Forward = b'\x01'
-#Left = b'\x02'
-#Right = b'\x03'
 
 
 #*********  Remote command Config *********#
@@ -83,22 +77,32 @@ KEY_RIGHT = chr(3).encode()
 
 #*********  Streaming/Video Config    *********#
 size = (320, 240)
-framerate = 30
-
+framerate =15	#20 or lower if better for Raspi 3B+ cause its awful performance
+roi = [40,220]
+SIGMA = 0.33
 
 #*********  Path Config    *********#
 training_path = "training_images"
-model_path = "nn_h5/nn_20190504_182950.h5"
+model_path = "nn_h5/roi0.h5"
 
 #*********  Action  Config    *********#
+speed = 100
+TBD = 0
 Move_Stop = 0
 Move_Start = 1
-Move_Forward = 2
-Move_Forward1 = 3
+Move_Forward_L = 2
+Move_Forward_R = 3
 Move_Left = 4
 Move_Right = 5
-Move_Reverse = 9
+Move_Step_L = 6
+Move_Step_R = 7
+
+Move_Forward = Move_Forward_L
+
+Move_Reverse = -1
 Move_etc = 99
+Stand_Up = 100
+
 
 
 

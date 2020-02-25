@@ -6,8 +6,12 @@ import numpy as np
 import time
 import tensorflow as tf
 from tensorflow.keras.optimizers import SGD
+from tensorflow.keras.optimizers import Adam
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
+from config import *
+import win_unicode_console
+win_unicode_console.enable()
 
 print ('Loading training data...')
 time_load_start = time.time()         # Returns the number of ticks after a certain event.
@@ -22,7 +26,7 @@ training_data = glob.glob('training_data_temp/*.npz')        # Finds filename ma
 
 #label_array = None
 for single_npz in training_data:                        # single_npz == one array representing one array of saved image data and user input label for that image.
-    with np.load(single_npz) as data:
+    with np.load(single_npz,allow_pickle=True) as data:
         train_labels_temp = data['train_labels']        # returns the training user input data array assigned to 'train_labels' argument created during np.savez step in 'collect_training_data.py'
         print ('Original labels shape:', train_labels_temp.shape)
 
@@ -62,7 +66,7 @@ print (y_test.shape)
 #    tf.keras.layers.Dense(10,  activation=tf.nn.softmax)
 #])
 model = tf.keras.Sequential([
-    tf.keras.layers.Reshape((120, 320, 1), input_shape=(120, 320)),
+    tf.keras.layers.Reshape((roi[1]-roi[0], 320, 1), input_shape=(roi[1]-roi[0], 320)),
     tf.keras.layers.Conv2D(32, (3,3), padding='same', activation=tf.nn.relu),
     tf.keras.layers.MaxPooling2D((2, 2), strides=2),
     tf.keras.layers.Conv2D(64, (3,3), padding='same', activation=tf.nn.relu),
@@ -111,9 +115,11 @@ print ('Training...')
 #model.add(Dense(3, init='uniform'))
 #model.add(Activation('softmax'))
 
-sgd = SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
+
+adam = Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08)
+#sgd = SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
 model.compile(loss='categorical_crossentropy',
-              optimizer=sgd,
+              optimizer=adam,
               metrics=['accuracy'])
 
 #model.compile(optimizer='adam', 
@@ -127,7 +133,7 @@ model.compile(loss='categorical_crossentropy',
 
 model.fit(X_train, y_train, 
           epochs=20, 
-          batch_size=10,
+          batch_size=15,
           validation_data=(X_test, y_test))
 
 # Get end time of Training
@@ -148,8 +154,8 @@ print ('Accuracy score: ', accuracy)
 
 # Save model as h5
 timestr = time.strftime('%Y%m%d_%H%M%S')
-filename_timestr = ('nn_{}.h5'.format(timestr))
-model.save(('nn_h5/nn_{}.h5'.format(timestr)))
+filename_timestr = ('nn_{}_{}_{}.h5'.format(timestr,accuracy,loss))
+model.save('nn_h5/nn_{}_{}_{}.h5'.format(timestr,accuracy,loss))
 
 # Save parameters to json file
 json_string = model.to_json()

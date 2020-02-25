@@ -16,7 +16,8 @@ import time
 from img_filter_multiply import ImageFilterMultiplier
 from tensorflow.keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_array, load_img
 from tqdm import tqdm
-
+import win_unicode_console
+win_unicode_console.enable()
 
 class ImageAugmenter(object):
 
@@ -148,7 +149,7 @@ if __name__ == '__main__':
 
     # Variables specific to ImageAugmenter
     # 'n' is the number of copies to make of each original image. Keep in mind this will be doubled when flipped. FINAL COUNT == (n+1) * 2
-    n = 1
+    n = 3
 
     # ImageAugmenter(n=n, sigma=sigma, timestr=timestr)
     ImageAugmenter(n=n, sigma=sigma, timestr=timestr).augment()

@@ -6,87 +6,82 @@ import glob
 import random
 import time
 from statistics import mean
+from config import *
+import math
+
 sigma = 0.33
-def proc_img(file):
-    img = cv2.imread(file)[40:220,:]
-    gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
-    blurred = cv2.GaussianBlur(gray, (3, 3), 0)
-    v = np.median(blurred)
-    lower = int(max(0,   (1.0 - sigma) * v))
-    upper = int(min(255, (1.0 + sigma) * v))
-    edges = cv2.Canny(blurred, lower, upper, apertureSize = 3)
-    #return edges
-    lines = cv2.HoughLinesP(edges, 1, np.pi/180, 10,minLineLength=20,maxLineGap=15)
-    try:
-        l1, l2 = draw_lanes(img,lines)
-        cv2.line(img, (l1[0], l1[1]), (l1[2], l1[3]), [0,255,0], 30)
-        cv2.line(img, (l2[0], l2[1]), (l2[2], l2[3]), [0,255,0], 30)
-    except Exception as e:
-        print(str(e))
-        pass
-    try:
-        for coords in lines:
-            coords = coords[0]
-            try:
-                cv2.line(edges, (coords[0], coords[1]), (coords[2], coords[3]), [255,0,0], 3)
-                
-                
-            except Exception as e:
-                print(str(e))
-    except Exception as e:
-        pass
-    return edges
+ROIS = [(0,140,320,40,0.7),
+(0,80,320,40,0.2),
+(0,0,320,80,0.1)]
+weight_sum = 0
+for r in ROIS:
+    weight_sum += r[4]
+def proc_img(original_image):
+    img = original_image[40:220,:]
+    #img, proc  = process_img(file)
+    blurred = cv2.GaussianBlur(img, (3, 3), 0)
+    canny = auto_canny(blurred)
+    #segment = do_segment(canny)
+    segment = canny
+    hough = cv2.HoughLinesP(segment, 2, np.pi/180, 15,minLineLength=20, maxLineGap=10)
+    return hough
 def calculate_lines(frame,lines):
-	# 建立两个空列表，用于存储左右车道边界坐标
+
 	left = []
 	right = []
+	y1s_l = []
+	y1s_r = []
 
-	# 循环遍历lines
 	for line in lines:
-		# 将线段信息从二维转化能到一维
+
 		x1,y1,x2,y2 = line.reshape(4)
 
-		# 将一个线性多项式拟合到x和y坐标上，并返回一个描述斜率和y轴截距的系数向量
 		parameters = np.polyfit((x1,x2), (y1,y2), 1)
-		slope = parameters[0] #斜率 
-		y_intercept = parameters[1] #截距
+		slope = parameters[0] 
+		y_intercept = parameters[1] 
 
-		# 通过斜率大小，可以判断是左边界还是右边界
-		# 很明显左边界slope<0(注意cv坐标系不同的)
-		# 右边界slope>0
+
 		if slope < 0:
 			left.append((slope,y_intercept))
+			y1s_l.append(y1) 
 		else:
 			right.append((slope,y_intercept))
-	print(left,right)
-	# 将所有左边界和右边界做平均，得到一条直线的斜率和截距
+			y1s_r.append(y1) 
+
+	#print(y1s_l, y1s_r)
+	if y1s_l != []:
+		y1_l = max(y1s_l)
+	else:
+		y1_l = frame.shape[0]
+
+	if y1s_r != []:
+		y1_r = max(y1s_r)
+	else:
+		y1_r = frame.shape[0]
+
 	if left != []:
 		left_avg = np.average(left,axis=0)
-		left_line = calculate_coordinate(frame,parameters=left_avg)
+		left_line = calculate_coordinate(frame,parameters=left_avg, y1 = y1_l)
 	else:
-		left_line = calculate_coordinate(frame,parameters=[0,0])
+		left_line = calculate_coordinate(frame,parameters=[0,0], y1 = y1_l)
 	if right != []:
 		right_avg = np.average(right,axis=0)
-		right_line = calculate_coordinate(frame, parameters=right_avg)
+		right_line = calculate_coordinate(frame, parameters=right_avg, y1 = y1_r)
 	else:
-		right_line = calculate_coordinate(frame, parameters=[0,0])
-
-	#print(left_avg,right_avg)
-	# 将这个截距和斜率值转换为x1,y1,x2,y2
+		right_line = calculate_coordinate(frame, parameters=[0,0], y1 = y1_r)
 
 
+    
 	return np.array([left_line,right_line])
 
-# 将截距与斜率转换为cv空间坐标
-def calculate_coordinate(frame,parameters):
-	# 获取斜率与截距
+
+def calculate_coordinate(frame,parameters, y1):
+
 	slope, y_intercept = parameters
 
-	# 设置初始y坐标为自顶向下(框架底部)的高度
-	# 将最终的y坐标设置为框架底部上方150
-	y1 = frame.shape[0]
+
 	y2 = 0
-	# 根据y1=kx1+b,y2=kx2+b求取x1,x2
+
 	if slope == 0:
 		x1 = 0
 		x2 = 0
@@ -95,204 +90,290 @@ def calculate_coordinate(frame,parameters):
 	    x2 = int((y2-y_intercept)/slope)
 	return np.array([x1,y1,x2,y2])
 
-# 可视化车道线
+
 def visualize_lines(frame,lines):
-	lines_visualize = np.zeros_like(frame)
-	# 检测lines是否为空
+	lines_visualize = frame
+
+	color = [(0,0,255),(0,255,0)]
+	line_list = lines.tolist()
+
 	if lines is not None:
 		for x1,y1,x2,y2 in lines:
 			if x1 !=0 and x2 != 0:
-				# 画线
-				cv2.line(lines_visualize,(int(x1),int(y1)),(int(x2),int(y2)),(0,0,255),5)
+ 				index = line_list.index([x1,y1,x2,y2])
+ 				clr = color[index]
+ 				cv2.line(lines_visualize,(int(x1),int(y1)),(int(x2),int(y2)),clr,5)
 	return lines_visualize
 
-# Tools 
-# Canny检测
-def do_canny(frame):
-	# 将每一帧转化为灰度图像，去除多余信息
-	gray = cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)
-	# 高斯滤波器，去除噪声，平滑图像
-	blur = cv2.GaussianBlur(gray,(5,5),0)
-	# 边缘检测
-	# minVal = 50
-	# maxVal = 150
-	canny = cv2.Canny(blur,50,150)
 
-	return canny
+def auto_canny(blurred):
+    # Compute the median of the single channel pixel intensities
+    v = np.median(blurred)
 
-# 图像分割，去除多余线条信息
-def do_segment(frame):
-	# 获取图像高度(注意CV的坐标系,正方形左上为0点，→和↓分别为x,y正方向)
-	height = frame.shape[0]
-
-	# 创建一个三角形的区域,指定三点
-	polygons = np.array([
-		[(0,height), 
-		 (320,height),
-		 (240,0)]
-		])
-
-	# 创建一个mask,形状与frame相同，全为0值
-	mask = np.zeros_like(frame)
-
-	# 对该mask进行填充，做一个掩码
-	# 三角形区域为1
-	# 其余为0
-	cv2.fillPoly(mask,polygons,255) 
-
-	# 将frame与mask做与，抠取需要区域
-	segment = cv2.bitwise_and(frame,mask) 
-
-	return segment
-
-# 车道左右边界标定
-def process_img(image):
-    image = image[40:220,:]
-    original_image = image
-    # edge detection
-    processed_img =  cv2.Canny(image, threshold1 = 200, threshold2=300)
+    # Apply automatic Canny edge detection using the computed median of the image
+    lower = int(max(0,   (1.0 - SIGMA) * v))
+    upper = int(min(255, (1.0 + SIGMA) * v))
+    edged = cv2.Canny(blurred, lower, upper)
+    return edged
+def predict_fn1(edged):
+    print(edged.shape)
+    #hough = cv2.HoughLinesP(edged, 2, np.pi/180, 20,minLineLength=20, maxLineGap=10)
     
-    processed_img = cv2.GaussianBlur(processed_img,(5,5),0)
-   
+    color = edged[160 ]
+    white_count = np.sum(color == 255)
+    white_index = np.where(color == 255)
+    if white_count == 0:
+        white_count = 1
+    try:
+        #lines = calculate_lines(edged, hough)
+        center = (white_index[0][0] + white_index[0][white_count-1])/2
 
-    # more info: http://docs.opencv2.org/3.0-beta/doc/py_tutorials/py_imgproc/py_houghlines/py_houghlines.html
-    #                                     rho   theta   thresh  min length, max gap:        
-    lines = cv2.HoughLinesP(processed_img, 1, np.pi/180, 180,      20,       15)
-    m1 = 0
-    m2 = 0
-    try:
-        l1, l2, m1,m2 = draw_lanes(original_image,lines)
-        cv2.line(original_image, (l1[0], l1[1]), (l1[2], l1[3]), [0,255,0], 30)
-        cv2.line(original_image, (l2[0], l2[1]), (l2[2], l2[3]), [0,255,0], 30)
-    except Exception as e:
-        print(str(e))
-        pass
-    try:
-        for coords in lines:
-            coords = coords[0]
-            try:
-                cv2.line(processed_img, (coords[0], coords[1]), (coords[2], coords[3]), [255,0,0], 3)
-                
-                
-            except Exception as e:
-                print(str(e))
-    except Exception as e:
+    except:
         pass
 
-    return processed_img,original_image, m1, m2
+    direction = center - 160
+    print("center:{} ; count:{} ; index:{} ; direction:{} ".format(center,white_count,white_index,direction))
+    if direction <= -45:
+        return np.array([0., 1., 0.]), None
+    elif direction <= 45:
+        return np.array([0., 0., 1.]), None
+    else:
+        return np.array([1., 0., 0.]), None
+def predict(img):
+    #angel = get_angel(img)
+    angel = get_point(img)
+    if angel == -50:
+        return np.array([0., 1., 0.]), None
+    elif angel == 0:
+        return np.array([1., 0., 0.]), None
+    else:
+        return np.array([.0, 0., 1.]), None
 
-def draw_lanes(img, lines, color=[0, 255, 255], thickness=3):
+    
 
-    # if this fails, go with some default line
-    #try:
 
-    # finds the maximum y value for a lane marker 
-    # (since we cannot assume the horizon will always be at the same point.)
 
-    ys = []  
-    for i in lines:
-        for ii in i:
-            ys += [ii[1],ii[3]]
-    min_y = min(ys)
-    max_y = 600
-    new_lines = []
-    line_dict = {}
 
-    for idx,i in enumerate(lines):
-        for xyxy in i:
-            # These four lines:
-            # modified from http://stackoverflow.com/questions/21565994/method-to-return-the-equation-of-a-straight-line-given-two-points
-            # Used to calculate the definition of a line, given two sets of coords.
-            x_coords = (xyxy[0],xyxy[2])
-            y_coords = (xyxy[1],xyxy[3])
-            A = vstack([x_coords,ones(len(x_coords))]).T
-            m, b = lstsq(A, y_coords)[0]
-
-            # Calculating our new, and improved, xs
-            x1 = (min_y-b) / m
-            x2 = (max_y-b) / m
-
-            line_dict[idx] = [m,b,[int(x1), min_y, int(x2), max_y]]
-            new_lines.append([int(x1), min_y, int(x2), max_y])
-
-    final_lanes = {}
-
-    for idx in line_dict:
-        final_lanes_copy = final_lanes.copy()
-        m = line_dict[idx][0]
-        b = line_dict[idx][1]
-        line = line_dict[idx][2]
-            
-        if len(final_lanes) == 0:
-            final_lanes[m] = [ [m,b,line] ]
-                
+def get_point(canny):
+    line = canny[140]
+    center_point = line[160]
+    left_point = 0
+    right_point = 0
+    left_index = 159
+    right_index = 161
+    while left_index > 0:
+        if line[left_index] == 255:
+            left_point = left_index
+            break
         else:
-            found_copy = False
-
-            for other_ms in final_lanes_copy:
-
-                if not found_copy:
-                    if abs(other_ms*1.2) > abs(m) > abs(other_ms*0.8):
-                        if abs(final_lanes_copy[other_ms][0][1]*1.2) > abs(b) > abs(final_lanes_copy[other_ms][0][1]*0.8):
-                            final_lanes[other_ms].append([m,b,line])
-                            found_copy = True
-                            break
-                    else:
-                        final_lanes[m] = [ [m,b,line] ]
-
-    line_counter = {}
-
-    for lanes in final_lanes:
-        line_counter[lanes] = len(final_lanes[lanes])
-
-    top_lanes = sorted(line_counter.items(), key=lambda item: item[1])[::-1][:2]
-
-    lane1_id = top_lanes[0][0]
-    lane2_id = top_lanes[1][0]
-
-    def average_lane(lane_data):
-        x1s = []
-        y1s = []
-        x2s = []
-        y2s = []
-        for data in lane_data:
-            x1s.append(data[2][0])
-            y1s.append(data[2][1])
-            x2s.append(data[2][2])
-            y2s.append(data[2][3])
-        return int(mean(x1s)), int(mean(y1s)), int(mean(x2s)), int(mean(y2s)) 
-
-    l1_x1, l1_y1, l1_x2, l1_y2 = average_lane(final_lanes[lane1_id])
-    l2_x1, l2_y1, l2_x2, l2_y2 = average_lane(final_lanes[lane2_id])
-
-    return [l1_x1, l1_y1, l1_x2, l1_y2], [l2_x1, l2_y1, l2_x2, l2_y2], lane1_id, lane2_id
+            left_index -= 1
 
 
+    while right_index < 320:
+        if line[right_index] == 255:
+            right_point = right_index
+            break
+        else:
+            right_index += 1
 
-if __name__ == '__main__':
-    files = glob.glob('./images/imgs_20190819_190820/*.jpg')
-    file = files[int(random.random()*len(files))]
-    img = cv2.imread(file)[40:220,:]
-    #img, proc  = process_img(file)
-    canny = do_canny(img)
-    #segment = do_segment(canny)
-    segment = canny
-    #cv2.imshow('img',img)
-    hough = cv2.HoughLinesP(segment, 2, np.pi/180, 100,minLineLength=20, maxLineGap=10)
+    width = right_point - left_point
+    dl, dr =  width-left_point, right_point-width
+    print("dl:{}, dr:{}".format(dl,dr))
+    if dr <=5:
+        return -50
+    if dl - dr > 30 :
+        return 50
+    elif dl - dr < -20:
+        return -50
+    else:
+        return 0
+    
+    
+
+def get_angel(img):
+    centroid_sum = 0
+    angel = 0
+    blobs = get_blobs(img)
+    if blobs:
+        most_pixels = 0
+        largest_blobs = 0
+        for i in range(len(blobs)):
+            if blobs[i].pixels() > most_pixels:
+                most_pixels = blobs[i]
+                largest_blobs = i
+        #cv2.rectangele(img, )
+        #cv2.drawcross()
+        centroid_sum += blobs[largest_blobs][0] *r[4]
+    print(blobs)
+
+    centroid_pos = (centroid_sum / weight_sum)
+
+    angel = -math.atan((centroid_pos - 160)/90)
+    angel = angel*108/np.pi
+    return angel
+    print("Need to trun angel:{}".format(angel))
+def get_mask(img):
+    blurred = cv2.GaussianBlur(img,(3,3),0)
+    hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
+    prepleMin = (115,50,10)
+    purpleMax(160,255,255)
+    mask = cv2.inRange(hsv, purpleMin, purpleMax)
+    res = cv2.bitwise_and(frame,frame,mask = mask)
+    mask = cv2.erode(mask, None, iterations = 1)
+    mask = cv2.dilate(mask, None, iterations = 1)
+    return mask 
+def get_blobs(mask):
+    params = cv2.SimpleBlobDetector_Params()
+    params.minThreshold = 0
+    params.maxThreshold = 256
+    params.filterByArea = True
+    params.minArea = 30
+    params.filterByConvexity = True
+    params.minConvexity = 0.5
+    params.filterByInertia = True
+    params.minInertiaRatio = 0.5
+
+
+    detector = cv2.SimpleBlobDetector_create(params)
+    reversemask = 255 - mask
+    blobs = detector.detect(mask)
+    return blobs
+
+
+def predict_fn(edged):
+    hough = cv2.HoughLinesP(edged, 2, np.pi/180, 20,minLineLength=20, maxLineGap=10)
+    #predict = np.array([ 0. , 0. , 1.])
+    try:
+        
+        lines = calculate_lines(edged, hough)
+        l = lines.tolist() #[[x1,y1,x2,y2], [x1,y1,x2,y2]]
+        l_x1, l_y1, l_x2, l_y2, r_x1, r_y1, r_x2, r_y2 =  l[0][0], l[0][1], l[0][2], l[0][3], l[1][0], l[1][1], l[1][2], l[1][3]
+        if (l_x2 - l_x1) != 0:
+            slope_l = (l_y2 - l_y1)/(l_x2 - l_x1)
+        else:
+            slope_l = None
+        
+        if (r_x2 - r_x1) != 0:
+            slope_r = (r_y2 - r_y1)/(r_x2 - r_x1)
+        else:
+            slope_r = None  
+        predict = np.array([ 1. , 0. , 0.])
+        predict = predict_from_slope_fn(slope_l=slope_l, slope_r=slope_r)
+
+
+    except Exception as e:
+
+        print(str(e))
+    return predict, lines
+def predict_from_slope_fn(slope_l = None,slope_r = None):
+    limit = 80/180*np.pi
+    limit_l = 75/180*np.pi
+    limit_r = 75/180*np.pi
+    limit_min = 15/180*np.pi
+    
+    if slope_r !=None:
+        theta_r = abs(math.atan(slope_r))
+    else: 
+        theta_r = 0
+    if slope_l !=None:
+        theta_l = abs(math.atan(slope_l))
+    else:
+        theta_l = 0
+    predict = np.array([ 1. , 0. , 0.])
+    if theta_l*theta_r != 0:
+        predict = np.array([ 0. , 0. , 1.])
+    elif theta_l == 0 and theta_r < limit:
+        predict = np.array([ 1. , 0. , 0.])
+    elif theta_r == 0 and theta_l < limit:
+        predict = np.array([ 0. , 1. , 0.])
+    else:
+        predict = np.array([ 0. , 0. , 1.])
+        print(2)
+    return predict
+def predict_from_slope(slope_l = None,slope_r = None):
+    limit = 75/180*np.pi
+    limit_l = 75/180*np.pi
+    limit_r = 75/180*np.pi
+    limit_min = 15/180*np.pi
+    predict = np.array([ 0. , 0. , 1.])
+    if slope_r !=None:
+        theta_r = math.atan(slope_r)
+    else: 
+        theta_r = 0
+    if slope_l !=None:
+        theta_l = math.atan(slope_l)
+    else:
+        theta_l = 0
+
+    if slope_l == None and slope_r !=None:
+
+        if theta_r > -limit and theta_r <= 0:
+            predict = np.array([ 1. , 0. , 0.])
+        elif theta_r > 0 and theta_r < limit_r:
+            predict = np.array([ 1. , 0. , 0.])
+        else:
+            predict = np.array([ 0. , 0. , 1.])
+            print('slope_l == None and slope_r !=None')
+    elif slope_l != None and slope_r == None:
+        if theta_l < limit and theta_l >= 0:
+            predict = np.array([ 0. , 1. , 0.])
+        elif theta_l < 0 and theta_l > -limit_l:
+            predict = np.array([ 0. , 1. , 0.])
+        #elif theta_1 
+        else:
+            predict = np.array([ 0. , 0. , 1.])
+            print('slope_l != None and slope_r == None')
+    elif slope_l != None and slope_r != None:
+        if abs(theta_r) <= limit_min:
+            return predict_from_slope(slope_l=slope_l,slope_r=None)
+        if abs(theta_l) <= limit_min:
+            return predict_from_slope(slope_l=None,slope_r=slope_r)
+
+        if theta_r <= 0 and theta_l >= 0 :
+            predict = np.array([ 0. , 0. , 1.])
+            print('theta_r <= 0 and theta_l >= 0')
+        elif theta_l > 0 and theta_r > 0 and theta_l < limit_l and theta_r < limit_r :
+            predict = np.array([ 0. , 1. , 0.])
+        elif theta_l < 0 and theta_r < 0 and theta_l > -limit_l and theta_r > -limit_r :
+            predict = np.array([ 1. , 0. , 0.])   
+        else:
+            predict = np.array([ 0. , 0. , 1.])
+            print('slope_l != None and slope_r != None')
+    else:
+            predict = np.array([ 0. , 0. , 1.])
+            print('else')
+    print('k = ',slope_l,slope_r)
+    print('theta = ',theta_l,theta_r)
+    return predict
+
+def test_visiukize(img):
+    hough = proc_img(img)
     try:
         lines = calculate_lines(img, hough)
-        print(lines)
         lines_visualize = visualize_lines(img, lines)
-        output = cv2.addWeighted(img,0.6,lines_visualize,1,0.1)
-        cv2.imshow("output", output)
+        #output = cv2.addWeighted(img,0.6,lines_visualize,1,0.1)
+        cv2.imshow("img", img)
+        cv2.imshow("lines_visualize", lines_visualize)
         #cv2.imshow('processed',proc)
         #print(m1,m2)
     except Exception as e:
         print(str(e))
-        cv2.imshow("img", img)
     while True:
         if cv2.waitKey(0) & 0xff == ord('q'):
             cv2.destroyAllWindows()
             break
 
-    pass
+
+if __name__ == '__main__':
+    files = glob.glob('./training_images/*.jpg')
+    file = files[int(random.random()*len(files))]
+    img = cv2.imread(file)[40:220,:]
+    blurred = cv2.GaussianBlur(img, (3, 3), 0)
+    canny = auto_canny(blurred)
+    print(predict(canny))
+    cv2.imshow("img", img)
+    cv2.imshow("canny", canny)
+    while True:
+        if cv2.waitKey(0) & 0xff == ord('q'):
+            cv2.destroyAllWindows()
+            break

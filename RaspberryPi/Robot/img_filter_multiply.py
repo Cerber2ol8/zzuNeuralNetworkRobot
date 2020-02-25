@@ -12,7 +12,9 @@ import sys
 import time
 # from img_augment import ImageAugmenter
 from tqdm import tqdm
+from config import roi
 
+dim = 320*(roi[1]-roi[0])
 class ImageFilterMultiplier(object):
 
     # 'subsequent' refers to whether this run is being performed (subsequently) on previously saved original images, but at a different sigma value.
@@ -24,9 +26,11 @@ class ImageFilterMultiplier(object):
                 sys.exit()
 
         # DELETE the contents of 'training_images_filtered' (to start anew)
+        
         shutil.rmtree('./training_images_filtered')
+        time.sleep(1)
         os.makedirs(  './training_images_filtered')
-
+		
         self.augment = augment
         self.blurred = None
         self.cnn = cnn
@@ -34,6 +38,7 @@ class ImageFilterMultiplier(object):
         self.sigma = sigma
         self.subsequent = False
         self.timestr = timestr
+        self.roi = roi
 
         if subsequent:
             self.subsequent = True
@@ -110,9 +115,9 @@ class ImageFilterMultiplier(object):
             image = cv2.imread(each, cv2.IMREAD_GRAYSCALE)
 
             # select lower half of the image. 0:120 would be the upper half of rows. 120:240 is the lower half. Selecting all columns.
-            roi = image[120:240, :]
+            roi_img = image[self.roi[0]:self.roi[1], :]
 
-            self.blurred = cv2.GaussianBlur(roi, (3, 3), 0)
+            self.blurred = cv2.GaussianBlur(roi_img, (3, 3), 0)
 
             # Different Canny filter parameters
             auto = self.auto_canny()
@@ -152,7 +157,7 @@ class ImageFilterMultiplier(object):
                 frame += 1
 
             # Decode/reshape ORIGINAL image into np.array
-            temp_array = image.reshape(1, 38400).astype(np.float32)
+            temp_array = image.reshape(1, dim).astype(np.float32)
             image_array.append(temp_array)
 
             # Flip temp_array (i.e. left will be right, right will be left, forward will be forward)
@@ -164,14 +169,14 @@ class ImageFilterMultiplier(object):
                 cv2.imwrite(self.loc_cnn_images + '/frame{:>05}.jpg'.format(frame), image_flipped)
                 frame += 1
 
-            temp_array_flipped = image_flipped.reshape(1, 38400).astype(np.float32)
+            temp_array_flipped = image_flipped.reshape(1, dim).astype(np.float32)
             image_array.append(temp_array_flipped)
 
         image_array = np.array(image_array)
 
         #HACKY: To solve the extra dimension problem...
         num_new_rows = image_array.shape[0]
-        image_array = image_array.reshape(num_new_rows, 38400).astype(np.float32)
+        image_array = image_array.reshape(num_new_rows, dim).astype(np.float32)
 
 
         print ('...complete!')
@@ -208,38 +213,42 @@ class ImageFilterMultiplier(object):
                     if self.augment:
 
                         for i in range(self.n + 1):
-                            final.append(row)
+                            #final.append(row)
 
                             # Forward-Left becomes Forward-Right, append
                             if row[0] == 1:
+                                final.append([1.0, 0.0, 0.0])
                                 final.append([0.0, 1.0, 0.0])
 
                             # Forward-Right becomes Forward-Left, append
                             elif row[1] == 1:
+                                final.append([0.0, 1.0, 0.0])
                                 final.append([1.0, 0.0, 0.0])
 
                             # Forward remains as Forward, append
                             elif row[2] == 1:
                                 final.append([0.0, 0.0, 1.0])
+                                final.append([0.0, 0.0, 1.0])
                                 continue
 
                     else:
                         # First append original row to final, then...
-                        final.append(row)
+                        #final.append(row)
 
                         # Forward-Left becomes Forward-Right, append
                         if row[0] == 1:
-                            row = [0.0, 1.0, 0.0]
-                            final.append(row)
+                            final.append([1.0, 0.0, 0.0])
+                            final.append([0.0, 1.0, 0.0])
 
                         # Forward-Right becomes Forward-Left, append
                         elif row[1] == 1:
-                            row = [1.0, 0.0, 0.0]
-                            final.append(row)
+                            final.append([0.0, 1.0, 0.0])
+                            final.append([1.0, 0.0, 0.0])
 
                         # Forward remains as Forward, append
                         elif row[2] == 1:
-                            final.append(row)
+                            final.append([0.0, 0.0, 1.0])
+                            final.append([0.0, 0.0, 1.0])
                             continue
 
         label_array = np.array(final)

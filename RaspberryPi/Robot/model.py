@@ -4,8 +4,8 @@ from tensorflow import keras
 import numpy as np
 import os
 import time
+from config import *
 
-SIGMA = 0.33
 timestr = time.strftime('%Y%m%d_%H%M%S')
 
 class NeuralNetwork(object):
@@ -35,7 +35,7 @@ class NeuralNetwork(object):
 
     def preprocess(self, frame):
         #image_array = frame.reshape(1, 38400).astype(np.float32)
-        image_array=frame.reshape(120, 320).astype(np.float32)
+        image_array=frame.reshape(roi[1]-roi[0], 320).astype(np.float32)
         image_array = np.array([image_array])
         image_array = image_array / 255.
         return image_array

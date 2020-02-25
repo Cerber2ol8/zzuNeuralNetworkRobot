@@ -12,8 +12,10 @@ class ServoTest(object):
         self.servo = PyServo.Servo(SerialID, Baudrate)
         print(self.servo.ser.portstr)
         self.send_inst = True
+        self.speed = speed
+        self.servo.RunGroup(Stand_Up,1)
         self.steer()
-
+		
     def steer(self):
 
 
@@ -39,7 +41,16 @@ class ServoTest(object):
                     elif key_input[pygame.K_LEFT]:
                         print("Left")
                         self.servo.RunGroup(Move_Left,1)
-
+                    elif key_input[pygame.K_KP_PLUS]:
+                        self.speed += 10
+                        self.servo.SetSpeed(0xFF,self.speed)
+                        print("Set Speed at".format(self.speed))
+                        print(self.speed)
+                    elif key_input[pygame.K_KP_MINUS]:
+                        self.speed -= 10
+                        self.servo.SetSpeed(0xFF,self.speed)
+                        print("Set Speed at".format(self.speed))
+                        print(self.speed)
                     # exit
                     elif key_input[pygame.K_x] or key_input[pygame.K_q]:
                         print("Exit")
