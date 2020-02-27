@@ -8,7 +8,7 @@
 其中包含最初的巡线arduino小车和后来的机器人  
 主要都用的是树莓派，摄像头到的图片，处理后用神经网络模型识别，返回 0. 1. 2. 代表 前进和左右转向  
 然后树莓派发送串口消息给arduino或舵机控制板执行事先预设的动作或动作组  
-其中PC文件夹存放的是   树莓派arduino小车使用的代码，在hamuchiwa/AutoRCCar基础上做了改动  
+其中PC文件夹存放的是   树莓派arduino小车使用的代码，在[hamuchiwa/AutoRCCar](https://github.com/hamuchiwa/AutoRCCar)基础上做了改动  
 RaspberryPi\Robot文件夹存放的是  机器人项目所使用的代码。重写了收集数据的代码，根据舵机串口通信协议写了调用的库。  
 根据机器人的运动情况写了一部分运动逻辑，以及一些调试工具  
 
