@@ -30,13 +30,13 @@ RaspberryPi\Robot文件夹存放的是  机器人项目所使用的代码。重�
 
 #  大致工作流
    # 图像收集
-      TBD
+      TODO
    # 数据处理
-      TBD
+      TODO
    # 模型加载
-      TBD
+      TODO
    # 运行
-      TBD
+      TODO
     
 
 	
